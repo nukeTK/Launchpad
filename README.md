@@ -10,6 +10,44 @@ RagaFinance Launchpad is a decentralized platform built on Ethereum that enables
 - **Security Features**: Multiple protection mechanisms against market manipulation
 - **Upgradeable**: Built with upgradeability in mind using UUPS pattern
 
+### Bonding Curve Selection
+
+The platform uses a Linear bonding curve for token price determination. Here's a detailed breakdown of the available bonding curve types and why we chose Linear:
+
+#### Available Bonding Curve Types
+1. **Linear**: Price increases linearly with token sales
+2. **Step**: Price increases in discrete steps
+3. **Exponential**: Price increases exponentially (not used due to zero-price issues)
+4. **Hyperbolic**: Price follows hyperbolic curve (not used due to zero-price issues)
+
+#### Why Not Exponential and Hyperbolic?
+Both Exponential and Hyperbolic bonding curves face a critical issue: when tokensSold = 0, they can result in a price of zero (or an impractical value). This causes problems like:
+- Division by zero errors
+- Infinite tokens per USDC
+- Unstable price discovery
+- Unfair market conditions
+
+These issues make them unsuitable for a functioning token sale without significant formula modifications.
+
+#### Why Not Step?
+While Step functions are viable, they have some drawbacks:
+- Price increases in discrete jumps rather than smoothly
+- Can create artificial price barriers
+- May discourage trading between price steps
+- Less natural price discovery
+
+#### Why Linear?
+The Linear bonding curve is the perfect fit for our use case because:
+- **Inherent Stability**: No zero-price problems or formula modifications needed
+- **Simple Implementation**: Straightforward to implement and understand
+- **Fair Price Discovery**: Provides moderate rewards for early buyers (1.67x)
+- **Predictable Progression**: Price changes are consistent and transparent
+- **Balanced Incentives**: Rewards early participants while maintaining reasonable price progression
+- **Smooth Trading**: Ensures continuous price movement without sudden jumps
+- **Market Efficiency**: Facilitates natural price discovery and trading
+
+The Linear curve aligns perfectly with our practical needs of raising funds, selling tokens, and rewarding early buyers without added complexity or potential issues.
+
 ### Token Distribution
 
 - **Total Supply**: 1 billion tokens
@@ -26,12 +64,52 @@ RagaFinance Launchpad is a decentralized platform built on Ethereum that enables
 
 ### Protection Mechanisms
 
-- Gas price limits
-- Maximum price impact protection (5%)
-- Slippage tolerance (1-10%) (Protection against MEV Bots)
-- Daily volume limits
 - Reentrancy protection
 - Emergency pause functionality
+- Minimum purchase amount: 1 USDC
+- Maximum purchase amount: Target funding amount
+- Time-based restrictions
+  - Sale starts at specified time
+  - Sale ends when target is reached or manually ended by creator
+- Input validation
+  - Target funding must be whole USDC amounts
+  - Target funding within min/max bounds
+  - Valid token name and symbol
+- Access control
+  - Only creator can end sale
+  - Only creator can claim creator tokens
+  - Only buyers can claim their purchased tokens
+- Price calculation safeguards
+  - Precision handling for 18 decimal calculations
+  - Overflow protection
+  - Minimum price enforcement
+- Token transfer restrictions
+  - No transfers until sale ends
+  - No transfers until tokens are claimed
+
+### Smart Contract Architecture
+
+#### Core Contracts
+- `Launchpad.sol`: Main contract handling fundraising logic
+- `LaunchpadToken.sol`: ERC20 token contract for each fundraise
+
+#### Libraries
+- `LinearBondingCurve.sol`: Implements linear bonding curve calculations
+
+#### Key Features
+- Proxy upgradeable pattern
+- OpenZeppelin security standards
+- Gas optimized operations
+- Event logging for all key actions
+- Modular design for future extensions
+
+### Technical Parameters
+
+- Solidity version: ^0.8.20
+- Decimal precision: 18 decimals
+- Base price: 75% of average price
+- Final price: 125% of average price
+- Price slope: (finalPrice - basePrice) / targetTokens
 
 ### Deployment
 

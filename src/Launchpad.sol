@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./LaunchpadToken.sol";
-import "./libraries/BancorBondingCurve.sol";
+import "./libraries/LinearBondingCurve.sol";
 import "./interfaces/ILaunchpad.sol";
 import "./interfaces/IUniswapV2Router02.sol";
 import "forge-std/console2.sol";
@@ -25,12 +25,13 @@ contract Launchpad is
 {
     using SafeERC20 for IERC20;
     // Storage
+
     uint256 public fundraiserIds;
     mapping(uint256 => Fundraise) public fundraisers;
     mapping(uint256 => bool) public activeFundraisers;
 
     mapping(uint256 => mapping(address => uint256)) public userPurchases;
-    
+
     address public usdcAddress;
     address public uniswapRouter;
 
@@ -105,6 +106,7 @@ contract Launchpad is
      */
     function createFundraise(
         uint256 _targetFunding, // 6 decimals
+        uint256 _startTime,
         string memory _tokenName,
         string memory _tokenSymbol
     )
@@ -112,6 +114,7 @@ contract Launchpad is
         override
         whenNotPaused
     {
+        require(_startTime > block.timestamp, "Start time must be in the future");
         require(_targetFunding >= MIN_TARGET_FUNDING, "Target funding too low");
         require(_targetFunding <= MAX_TARGET_FUNDING, "Target funding too high");
         require(_targetFunding % 1e6 == 0, "Target funding must be in whole USDC");
@@ -120,6 +123,8 @@ contract Launchpad is
 
         fundraiserIds++;
 
+        (uint256 basePrice, uint256 slope) = LinearBondingCurve.calculateCurveParams(TARGET_TOKENS_SOLD, _targetFunding);
+
         fundraisers[fundraiserIds] = Fundraise({
             creator: msg.sender,
             targetFunding: _targetFunding, // 6 decimals
@@ -127,8 +132,10 @@ contract Launchpad is
             tokensSold: 0, // 18 decimals
             isCompleted: false,
             tokenAddress: address(token),
-            startTime: block.timestamp,
-            endTime: 0
+            startTime: _startTime,
+            endTime: 0,
+            basePrice: basePrice,
+            slope: slope
         });
 
         activeFundraisers[fundraiserIds] = true;
@@ -152,16 +159,19 @@ contract Launchpad is
         whenNotPaused
     {
         require(activeFundraisers[fundraiserId], "Fundraise not active");
+
         Fundraise storage fundraiser = fundraisers[fundraiserId];
+        require(block.timestamp >= fundraisers[fundraiserId].startTime, "Fundraise not started");
         require(!fundraiser.isCompleted, "Fundraise completed");
 
         IERC20 usdc = IERC20(usdcAddress);
 
-        uint256 tokensToReceive = BancorBondingCurve.calculateTokensForUSDC(
-            INITIAL_SUPPLY, // 18 decimals
-            fundraiser.currentFunding, // 6 decimals
+        uint256 tokensToReceive = LinearBondingCurve.calculateTokens(
+            fundraiser.tokensSold, // 18 decimals
             usdcAmount, // 6 decimals
-            fundraiser.targetFunding // 6 decimals
+            TARGET_TOKENS_SOLD, // 18 decimals
+            fundraiser.basePrice, // 18 decimals
+            fundraiser.slope // 18 decimals
         );
 
         console2.log("tokensToReceive", tokensToReceive);
@@ -218,6 +228,8 @@ contract Launchpad is
      * @return tokenAddress Address of the campaign's token
      * @return startTime Timestamp when the campaign started
      * @return endTime Timestamp when the campaign ended (0 if not ended)
+     * @return basePrice Base price of the token (18 decimals)
+     * @return slope Slope of the bonding curve (18 decimals)
      */
     function getFundraiser(uint256 fundraiserId)
         external
@@ -231,7 +243,9 @@ contract Launchpad is
             bool isCompleted,
             address tokenAddress,
             uint256 startTime,
-            uint256 endTime
+            uint256 endTime,
+            uint256 basePrice,
+            uint256 slope
         )
     {
         Fundraise memory fundraiser = fundraisers[fundraiserId];
@@ -243,7 +257,9 @@ contract Launchpad is
             fundraiser.isCompleted,
             fundraiser.tokenAddress,
             fundraiser.startTime,
-            fundraiser.endTime
+            fundraiser.endTime,
+            fundraiser.basePrice,
+            fundraiser.slope
         );
     }
 

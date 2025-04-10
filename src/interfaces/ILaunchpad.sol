@@ -11,6 +11,8 @@ interface ILaunchpad {
         address tokenAddress;
         uint256 startTime;
         uint256 endTime;
+        uint256 basePrice;
+        uint256 slope;
     }
 
     // Constants
@@ -27,7 +29,13 @@ interface ILaunchpad {
     event TokensClaimed(uint256 indexed fundraiserId, address indexed claimer, uint256 amount);
 
     // Fundraiser Management
-    function createFundraise(uint256 _targetFunding, string memory _tokenName, string memory _tokenSymbol) external;
+    function createFundraise(
+        uint256 _targetFunding,
+        uint256 _startTime,
+        string memory _tokenName,
+        string memory _tokenSymbol
+    )
+        external;
 
     function purchaseTokens(uint256 fundraiserId, uint256 usdcAmount) external;
 
@@ -43,6 +51,8 @@ interface ILaunchpad {
             bool isCompleted,
             address tokenAddress,
             uint256 startTime,
-            uint256 endTime
+            uint256 endTime,
+            uint256 basePrice,
+            uint256 slope
         );
 }
