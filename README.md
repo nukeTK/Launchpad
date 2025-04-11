@@ -21,11 +21,12 @@ The platform uses a Linear bonding curve for token price determination. Here's a
 4. **Hyperbolic**: Price follows hyperbolic curve (not used due to zero-price issues)
 
 #### Why Not Exponential and Hyperbolic?
-Both Exponential and Hyperbolic bonding curves face a critical issue: when tokensSold = 0, they can result in a price of zero (or an impractical value). This causes problems like:
-- Division by zero errors
-- Infinite tokens per USDC
-- Unstable price discovery
-- Unfair market conditions
+Both Exponential and Hyperbolic bonding curves face critical issues: they require initial funding to establish a starting price, and when tokensSold = 0, they can result in a price of zero (or an impractical value). This causes problems like:
+- Need for significant initial capital to seed the reserve
+- Division by zero errors without proper seeding
+- Infinite tokens per USDC at low reserve levels
+- Unstable price discovery in early stages
+- Unfair market conditions without adequate initial liquidity
 
 These issues make them unsuitable for a functioning token sale without significant formula modifications.
 
@@ -115,7 +116,10 @@ The Linear curve aligns perfectly with our practical needs of raising funds, sel
 
 #### Sepolia Testnet
 ```
-Contract Address: [ADD_SEPOLIA_ADDRESS_HERE]
+Contract Addresses:
+Launchpad Proxy: [0x2ed0aa33fcd1a3b5b2abfa317582664686ce7cf4](https://sepolia.etherscan.io/address/0x2ed0aa33fcd1a3b5b2abfa317582664686ce7cf4)
+Launchpad Implementation: [0xfabc58345ff9cacc43a3716a12520e32aa2853c8](https://sepolia.etherscan.io/address/0xfabc58345ff9cacc43a3716a12520e32aa2853c8)
+Mock USDC (6 Decimals): [0xc896d15d0100fecdbff8c84ecfe62c5976040f3e](https://sepolia.etherscan.io/address/0xc896d15d0100fecdbff8c84ecfe62c5976040f3e)
 ```
 
 ### Development

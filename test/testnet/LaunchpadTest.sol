@@ -1,343 +1,154 @@
-// // SPDX-License-Identifier: MIT
-// pragma solidity ^0.8.20;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
-// import "forge-std/Test.sol";
-// import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-// import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-// import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-// import "../../src/Launchpad.sol";
-// import "../../src/libraries/CustomBondingCurve.sol";
+import "forge-std/Test.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import "../../src/Launchpad.sol";
+import "forge-std/console2.sol";
 
-// contract MockUSDC is ERC20 {
-//     constructor() ERC20("Mock USDC", "USDC") {
-//         _mint(msg.sender, 1_000_000 * 10 ** decimals());
-//     }
+contract MockUSDC is ERC20 {
+    constructor() ERC20("Mock USDC", "USDC") {
+        _mint(msg.sender, 1_000_000 * 10 ** decimals());
+    }
 
-//     function mint(address to, uint256 amount) public {
-//         _mint(to, amount);
-//     }
-// }
+    function mint(address to, uint256 amount) public {
+        _mint(to, amount);
+    }
 
-// contract LaunchpadTest is Test {
-//     Launchpad public launchpad;
-//     MockUSDC public usdc;
-//     address public constant ADMIN = 0xbbCff2Fcf443f54e84ce93d23C679ae8F626cAAC;
-//     address public constant UNISWAP = 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3;
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
+}
 
-//     address public user1 = makeAddr("user1");
-//     address public user2 = makeAddr("user2");
-//     address public user3 = makeAddr("user3");
+contract LaunchpadTest is Test {
+    Launchpad public launchpad;
+    MockUSDC public usdc;
+    address public constant ADMIN = 0xbbCff2Fcf443f54e84ce93d23C679ae8F626cAAC;
+    address public constant UNISWAP = 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3;
 
-//     function setUp() public {
-//         vm.startPrank(ADMIN);
-//         // Create fork of Sepolia
-//         vm.createSelectFork("https://sepolia.infura.io/v3/d670ac7f22c94d45a4a8729e2daf865a");
+    address public user1 = makeAddr("user1");
+    address public user2 = makeAddr("user2");
+    address public user3 = makeAddr("user3");
 
-//         // Deploy USDC token
-//         usdc = new MockUSDC();
+    function setUp() public {
+        vm.startPrank(ADMIN);
+        // Create fork of Sepolia
+        vm.createSelectFork("https://sepolia.infura.io/v3/d670ac7f22c94d45a4a8729e2daf865a");
 
-//         // Deploy Launchpad implementation
-//         Launchpad implementation = new Launchpad();
+        // Deploy USDC token
+        usdc = new MockUSDC();
 
-//         // Deploy proxy
-//         bytes memory data = abi.encodeWithSelector(Launchpad.initialize.selector, address(usdc), UNISWAP);
+        // Deploy Launchpad implementation
+        Launchpad implementation = new Launchpad();
 
-//         ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), data);
-//         launchpad = Launchpad(address(proxy));
+        // Deploy proxy
+        bytes memory data = abi.encodeWithSelector(Launchpad.initialize.selector, address(usdc), UNISWAP);
 
-//         // Fund test users with USDC
-//         usdc.transfer(user1, 10_000 * 10 ** usdc.decimals());
-//         usdc.transfer(user2, 10_000 * 10 ** usdc.decimals());
-//         usdc.transfer(user3, 10_000 * 10 ** usdc.decimals());
-//         vm.stopPrank();
-//     }
+        ERC1967Proxy proxy = new ERC1967Proxy(address(implementation), data);
+        launchpad = Launchpad(address(proxy));
+        // Fund test users with USDC
+        usdc.mint(user1, 10_000_000 * 10 ** usdc.decimals());
+        usdc.mint(user2, 10_000_000 * 10 ** usdc.decimals());
+        usdc.mint(user3, 10_000_000 * 10 ** usdc.decimals());
+        vm.stopPrank();
+    }
 
-//     // // Test createFundraise function
-//     // function testCreateFundraise() public {
-//     //     uint256 targetFunding = 200_000 * 10 ** 6; // 200K USDC
-//     //     string memory tokenName = "Test Token";
-//     //     string memory tokenSymbol = "TEST";
-//     //     uint256 startTime = block.timestamp + 1 days;
+    function testCompleteFundraiseFlow() public {
+        uint256 targetFunding = 500_000 * 10 ** 6; // 500K USDC
+        uint256 startTime = block.timestamp + 1 days;
+        string memory tokenName = "nuketTK";
+        string memory tokenSymbol = "NTK";
 
-//     //     vm.prank(user1);
-//     //     launchpad.createFundraise(targetFunding, startTime, tokenName, tokenSymbol);
+        vm.prank(ADMIN);
+        launchpad.createFundraise(targetFunding, startTime, tokenName, tokenSymbol);
 
-//     //     (
-//     //         address creator,
-//     //         uint256 target,
-//     //         uint256 current,
-//     //         uint256 sold,
-//     //         bool completed,
-//     //         address token,
-//     //         uint256 start,
-//     //         uint256 end,
-//     //         uint256 basePrice,
-//     //         uint256 slope
-//     //     ) = launchpad.getFundraiser(1);
+        // Move time forward to start time
+        vm.warp(startTime + 1);
 
-//     //     assertEq(creator, user1);
-//     //     assertEq(target, targetFunding);
-//     //     assertEq(current, 0);
-//     //     assertEq(sold, 0);
-//     //     assertFalse(completed);
-//     //     assertTrue(token != address(0));
-//     //     assertEq(start, startTime);
-//     //     assertEq(end, 0);
-//     //     assertTrue(basePrice > 0);
-//     //     assertTrue(slope > 0);
-//     // }
+        uint256 maxDepositPerUser = 10_000 * 10 ** 6; // 10k USDC max per user
+        uint256 currentTotal = 0;
+        bool fundraiserCompleted = false;
 
-//     // function testCreateFundraiseInvalidTarget() public {
-//     //     // Test minimum target
-//     //     vm.expectRevert("Target funding too low");
-//     //     launchpad.createFundraise(199_999 * 10 ** 6, block.timestamp + 1 days, "Test", "TEST");
+        // Array of users for easy iteration
+        address[] memory users = new address[](3);
+        users[0] = user1;
+        users[1] = user2;
+        users[2] = user3;
 
-//     //     // Test maximum target
-//     //     vm.expectRevert("Target funding too high");
-//     //     launchpad.createFundraise(1_000_000_001 * 10 ** 6, block.timestamp + 1 days, "Test", "TEST");
+        // Continue depositing until fundraiser is complete
+        while (!fundraiserCompleted) {
+            for (uint256 i = 0; i < users.length; i++) {
+                address currentUser = users[i];
+                uint256 userDeposit = maxDepositPerUser;
 
-//     //     // Test non-whole USDC amount
-//     //     vm.expectRevert("Target funding must be in whole USDC");
-//     //     launchpad.createFundraise(200_000 * 10 ** 6 + 1, block.timestamp + 1 days, "Test", "TEST");
+                // Check if this deposit would exceed target
+                if (currentTotal + userDeposit > targetFunding) {
+                    userDeposit = targetFunding - currentTotal;
+                }
 
-//     //     // Test start time in past
-//     //     vm.expectRevert("Start time must be in the future");
-//     //     launchpad.createFundraise(200_000 * 10 ** 6, block.timestamp - 1, "Test", "TEST");
-//     // }
+                // Skip if no more funds needed
+                if (userDeposit == 0) {
+                    fundraiserCompleted = true;
+                    break;
+                }
 
-//     // // Test purchaseTokens function
-//     // function testPurchaseTokens() public {
-//     //     // Create fundraiser
-//     //     uint256 targetFunding = 200_000 * 10 ** 6; // 200K USDC
-//     //     uint256 startTime = block.timestamp + 1 days;
-//     //     launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
+                // Make deposit
+                vm.startPrank(currentUser);
+                usdc.approve(address(launchpad), userDeposit);
+                launchpad.purchaseTokens(1, userDeposit);
+                vm.stopPrank();
 
-//     //     // Try to purchase before start time
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), 10 ** 6);
-//     //     vm.expectRevert("Fundraise not started");
-//     //     launchpad.purchaseTokens(1, 10 ** 6);
+                // Update total
+                currentTotal += userDeposit;
 
-//     //     // Move time forward
-//     //     vm.warp(startTime + 1);
+                // Check if fundraiser is complete
+                (,,, uint256 tokensSold, bool isCompleted,,,) = launchpad.getFundraiser(1);
+                if (isCompleted) {
+                    fundraiserCompleted = true;
+                    break;
+                }
+            }
+        }
 
-//     //     // Purchase tokens
-//     //     vm.prank(user1);
-//     //     launchpad.purchaseTokens(1, 10 ** 6);
+        // Verify final state
+        (, uint256 targetFund, uint256 currentFunding, uint256 tokensSold, bool isCompleted, address tokenAddr,,) =
+            launchpad.getFundraiser(1);
+        uint256 targetTokensSold = launchpad.TARGET_TOKENS_SOLD();
+        assertEq(tokensSold, targetTokensSold);
+        assertEq(currentFunding, targetFund);
+        assertTrue(isCompleted);
+        IERC20 token = IERC20(tokenAddr);
+        // Verify user balances
+        for (uint256 i = 0; i < users.length; i++) {
+            assertTrue(launchpad.userPurchases(1, users[i]) > 0);
+        }
 
-//     //     // Verify purchase
-//     //     assertEq(launchpad.userPurchases(1, user1), 10 ** 18); // 1 token with 18 decimals
-//     //     assertEq(usdc.balanceOf(address(launchpad)), 10 ** 6);
+        // Store initial user purchase amounts
+        uint256[] memory initialPurchases = new uint256[](users.length);
+        for (uint256 i = 0; i < users.length; i++) {
+            initialPurchases[i] = launchpad.userPurchases(1, users[i]);
+            assertTrue(initialPurchases[i] > 0, "User should have tokens to claim");
+        }
 
-//     //     // Purchase more tokens
-//     //     vm.prank(user2);
-//     //     usdc.approve(address(launchpad), 10 ** 6);
-//     //     launchpad.purchaseTokens(1, 10 ** 6);
+        // Claim tokens for each user and verify
+        for (uint256 i = 0; i < users.length; i++) {
+            address user = users[i];
+            uint256 expectedTokens = initialPurchases[i];
 
-//     //     // Verify second purchase
-//     //     assertEq(launchpad.userPurchases(1, user2), 10 ** 18);
-//     //     assertEq(usdc.balanceOf(address(launchpad)), 2 * 10 ** 6);
-//     // }
+            uint256 balanceBefore = token.balanceOf(user);
 
-//     // function testPurchaseTokensEdgeCases() public {
-//     //     // Create fundraiser
-//     //     uint256 targetFunding = 200_000 * 10 ** 6;
-//     //     uint256 startTime = block.timestamp + 1 days;
-//     //     launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
+            vm.prank(user);
+            launchpad.claimTokens(1);
 
-//     //     // Test purchasing from inactive fundraiser
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), 10_000 * 10 ** 6);
-//     //     launchpad.pause();
-//     //     vm.expectRevert("Pausable: paused");
-//     //     launchpad.purchaseTokens(1, 10_000 * 10 ** 6);
-//     //     launchpad.unpause();
+            uint256 balanceAfter = token.balanceOf(user);
 
-//     //     // Test purchasing with insufficient allowance
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), 0);
-//     //     vm.expectRevert();
-//     //     launchpad.purchaseTokens(1, 10_000 * 10 ** 6);
+            // Verify user received correct amount of tokens
+            assertEq(balanceAfter - balanceBefore, expectedTokens, "Incorrect tokens claimed");
 
-//     //     // Test purchasing with zero amount
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), 10_000 * 10 ** 6);
-//     //     vm.expectRevert("Amount too small");
-//     //     launchpad.purchaseTokens(1, 0);
-
-//     //     // Test purchasing with insufficient balance
-//     //     vm.prank(user1);
-//     //     usdc.transfer(user2, usdc.balanceOf(user1));
-//     //     vm.expectRevert();
-//     //     launchpad.purchaseTokens(1, 10_000 * 10 ** 6);
-
-//     //     // Test purchasing after completion
-//     //     vm.warp(startTime + 1);
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), targetFunding);
-//     //     launchpad.purchaseTokens(1, targetFunding);
-//     //     vm.expectRevert("Fundraise completed");
-//     //     launchpad.purchaseTokens(1, 10 ** 6);
-//     // }
-
-//     // function testPurchaseTokensReentrancy() public {
-//     //     // Create fundraiser
-//     //     uint256 targetFunding = 200_000 * 10 ** 6;
-//     //     uint256 startTime = block.timestamp + 1 days;
-//     //     launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
-
-//     //     // Setup reentrancy attack
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), type(uint256).max);
-
-//     //     // Attempt reentrancy
-//     //     vm.warp(startTime + 1);
-//     //     vm.prank(user1);
-//     //     launchpad.purchaseTokens(1, 10_000 * 10 ** 6);
-//     //     // Should not be able to reenter due to nonReentrant modifier
-//     // }
-
-//     // Test claimTokens function
-//     // function test_purchaseTokens_exceedsTargetTokens() public {
-//     //     // Create and complete fundraiser
-//     //     uint256 targetFunding = 200_000 * 10 ** 6;
-//     //     uint256 startTime = block.timestamp + 1 days;
-//     //     launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
-
-//     //     // Purchase tokens
-//     //     vm.warp(startTime + 1);
-//     //     vm.startPrank(user1);
-//     //     usdc.approve(address(launchpad), targetFunding);
-//     //     vm.expectRevert("Exceeds target tokens");
-//     //     launchpad.purchaseTokens(1, targetFunding);
-//     //     vm.stopPrank();
-//     // }
-
-//     function test_ClaimTokensEdgeCases() public {
-//         // Create fundraiser
-//         uint256 targetFunding = 500_000 * 10 ** 6;
-//         uint256 startTime = block.timestamp + 1 days;
-//         launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
-
-//         // Test claiming from active fundraiser
-//         vm.expectRevert("Fundraise still active");
-//         launchpad.claimTokens(1);
-
-//         // Test claiming with no tokens
-//         // Purchase tokens in a loop to reach target funding
-//         for (uint256 i = 0; i < 9; i++) {
-//             vm.warp(startTime + 1);
-//             vm.startPrank(user1);
-//             console2.log("currentPrice", launchpad.getCurrentPrice(1));
-//             usdc.approve(address(launchpad), 50_000 * 1e6);
-//             launchpad.purchaseTokens(1, 50_000 * 1e6);
-//             console2.log("user balance", launchpad.userPurchases(1, user1));
-//             vm.stopPrank();
-//         }
-
-//         vm.startPrank(user1);
-//         usdc.approve(address(launchpad), 90_000 * 1e6);
-//         launchpad.purchaseTokens(1, 90_000 * 1e6);
-//         vm.stopPrank();
-
-
-//         // Test claiming twice
-//         // vm.prank(user1);
-//         //launchpad.claimTokens(1);
-//         (
-//             address creator,
-//             uint256 targetFunding_,
-//             uint256 currentFunding,
-//             uint256 tokensSold,
-//             bool isCompleted,
-//             address tokenAddress,
-//             uint256 startTime_,
-//             uint256 endTime,
-//             uint256 basePrice,
-//             uint256 slope
-//         ) = launchpad.getFundraiser(1);
-//         console2.log("token", tokenAddress);
-//         console2.log("currentFunding", currentFunding);
-//         console2.log("tokensSold", tokensSold);
-//         console2.log("isCompleted", isCompleted);
-//         console2.log("startTime", startTime);
-//         console2.log("endTime", endTime);
-//         console2.log("basePrice", basePrice);
-//         console2.log("slope", slope);
-//     }
-
-//     // // Test completeFundraise function
-//     // function testCompleteFundraise() public {
-//     //     // Create fundraiser
-//     //     uint256 targetFunding = 200_000 * 10 ** 6;
-//     //     uint256 startTime = block.timestamp + 1 days;
-//     //     launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
-
-//     //     // Complete fundraiser
-//     //     vm.warp(startTime + 1);
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), targetFunding);
-//     //     launchpad.purchaseTokens(1, targetFunding);
-
-//     //     // Verify completion
-//     //     (,,, uint256 sold, bool completed, address token, uint256 start, uint256 end,,) = launchpad.getFundraiser(1);
-//     //     assertTrue(completed);
-//     //     assertEq(end, block.timestamp);
-//     //     assertTrue(end > start);
-//     // }
-
-//     // function testCompleteFundraiseDistribution() public {
-//     //     // Create fundraiser
-//     //     uint256 targetFunding = 200_000 * 10 ** 6;
-//     //     uint256 startTime = block.timestamp + 1 days;
-//     //     launchpad.createFundraise(targetFunding, startTime, "Test", "TEST");
-
-//     //     // Complete fundraiser
-//     //     vm.warp(startTime + 1);
-//     //     vm.prank(user1);
-//     //     usdc.approve(address(launchpad), targetFunding);
-//     //     launchpad.purchaseTokens(1, targetFunding);
-
-//     //     // Verify token distribution
-//     //     (,,, uint256 sold, bool completed, address token, uint256 start, uint256 end,,) = launchpad.getFundraiser(1);
-//     //     LaunchpadToken tokenContract = LaunchpadToken(token);
-
-//     //     // Check creator tokens
-//     //     assertEq(tokenContract.balanceOf(user1), launchpad.CREATOR_TOKENS());
-
-//     //     // Check platform fee tokens
-//     //     assertEq(tokenContract.balanceOf(ADMIN), launchpad.PLATFORM_FEE_TOKENS());
-
-//     //     // Check liquidity tokens
-//     //     assertEq(tokenContract.balanceOf(address(launchpad)), 0);
-
-//     //     // Check USDC distribution
-//     //     assertEq(usdc.balanceOf(user1), targetFunding * 50 / 100); // 50% to creator
-//     //     assertEq(usdc.balanceOf(UNISWAP), targetFunding * 50 / 100); // 50% to liquidity
-//     // }
-
-//     // // Test pause/unpause functionality
-//     // function testPauseUnpause() public {
-//     //     // Test pause
-//     //     vm.prank(ADMIN);
-//     //     launchpad.pause();
-//     //     assertTrue(launchpad.paused());
-
-//     //     // Test unpause
-//     //     vm.prank(ADMIN);
-//     //     launchpad.unpause();
-//     //     assertFalse(launchpad.paused());
-//     // }
-
-//     // function testPauseUnpauseAuthorization() public {
-//     //     // Test non-owner pause
-//     //     vm.prank(user1);
-//     //     vm.expectRevert("Ownable: caller is not the owner");
-//     //     launchpad.pause();
-
-//     //     // Test non-owner unpause
-//     //     vm.prank(user1);
-//     //     vm.expectRevert("Ownable: caller is not the owner");
-//     //     launchpad.unpause();
-//     // }
-// }
+            // Verify purchase amount was reset to 0
+            assertEq(launchpad.userPurchases(1, user), 0, "Purchase amount should be reset");
+        }
+    }
+}

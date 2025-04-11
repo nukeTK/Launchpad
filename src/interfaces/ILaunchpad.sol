@@ -11,8 +11,6 @@ interface ILaunchpad {
         address tokenAddress;
         uint256 startTime;
         uint256 endTime;
-        uint256 basePrice;
-        uint256 slope;
     }
 
     // Constants
@@ -51,8 +49,6 @@ interface ILaunchpad {
             bool isCompleted,
             address tokenAddress,
             uint256 startTime,
-            uint256 endTime,
-            uint256 basePrice,
-            uint256 slope
+            uint256 endTime
         );
 }
