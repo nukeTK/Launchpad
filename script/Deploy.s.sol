@@ -6,7 +6,6 @@ import "openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "../src/MockUSDC.sol";
 import "../src/Launchpad.sol";
 
-
 contract DeployScript is Script {
     address public constant UNISWAP = 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3;
 
@@ -32,4 +31,4 @@ contract DeployScript is Script {
 
         vm.stopBroadcast();
     }
-} 
+}

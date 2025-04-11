@@ -310,7 +310,7 @@ contract Launchpad is
         // Create Uniswap pool
         tokenContract.approve(uniswapRouter, LIQUIDITY_TOKENS); // 18 decimals
         usdc.approve(uniswapRouter, liquidityUsdcAmount); // 6 decimals
-        
+
         IUniswapV2Router02 router = IUniswapV2Router02(uniswapRouter);
         router.addLiquidity(
             address(token),
