@@ -1,4 +1,4 @@
-## RagaFinance Launchpad
+##Launchpad
 
 RagaFinance Launchpad is a decentralized platform built on Ethereum that enables projects to raise funds through token sales using a Bancor bonding curve mechanism. The platform provides a secure and efficient way for projects to launch their tokens while ensuring fair price discovery and protecting both creators and investors.
 
@@ -150,7 +150,6 @@ $ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --pri
 For more detailed information about the implementation and usage, please refer to:
 - [Foundry Documentation](https://book.getfoundry.sh/)
 - [OpenZeppelin Documentation](https://docs.openzeppelin.com/)
-- [Bancor Protocol Documentation](https://docs.bancor.network/)
 
 ### License
 
