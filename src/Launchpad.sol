@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./LaunchpadToken.sol";
-import "./libraries/LinearBondingCurve.sol";
+import "./libraries/CustomBondingCurve.sol";
 import "./interfaces/ILaunchpad.sol";
 import "./interfaces/IUniswapV2Router02.sol";
 import "forge-std/console2.sol";
@@ -43,7 +43,7 @@ contract Launchpad is
     uint256 public constant override PLATFORM_FEE_TOKENS = 50_000_000 * 1e18; // 50M tokens (18 decimals)
 
     // Target funding limits (6 decimals for USDC)
-    uint256 public constant MIN_TARGET_FUNDING = 100_000 * 1e6; // 100,000 USDC
+    uint256 public constant MIN_TARGET_FUNDING = 200_000 * 1e6; // 200,000 USDC
     uint256 public constant MAX_TARGET_FUNDING = 1_000_000_000 * 1e6; // 1B USDC
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -123,7 +123,8 @@ contract Launchpad is
 
         fundraiserIds++;
 
-        (uint256 basePrice, uint256 slope) = LinearBondingCurve.calculateCurveParams(TARGET_TOKENS_SOLD, _targetFunding);
+        // (uint256 basePrice, uint256 slope) = LinearBondingCurve.calculateCurveParams(TARGET_TOKENS_SOLD,
+        // _targetFunding);
 
         fundraisers[fundraiserIds] = Fundraise({
             creator: msg.sender,
@@ -134,8 +135,8 @@ contract Launchpad is
             tokenAddress: address(token),
             startTime: _startTime,
             endTime: 0,
-            basePrice: basePrice,
-            slope: slope
+            basePrice: 0,
+            slope: 0
         });
 
         activeFundraisers[fundraiserIds] = true;
@@ -143,12 +144,6 @@ contract Launchpad is
         emit FundraiseCreated(fundraiserIds, msg.sender, _targetFunding);
     }
 
-    /**
-     * @notice Allows users to purchase tokens in a fundraising campaign
-     * @dev Uses Bancor bonding curve to determine token price
-     * @param fundraiserId ID of the fundraising campaign
-     * @param usdcAmount Amount of USDC to spend (6 decimals)
-     */
     function purchaseTokens(
         uint256 fundraiserId,
         uint256 usdcAmount // usdcAmount in 6 decimals
@@ -159,46 +154,67 @@ contract Launchpad is
         whenNotPaused
     {
         require(activeFundraisers[fundraiserId], "Fundraise not active");
-
         Fundraise storage fundraiser = fundraisers[fundraiserId];
-        require(block.timestamp >= fundraisers[fundraiserId].startTime, "Fundraise not started");
+        require(block.timestamp >= fundraiser.startTime, "Fundraise not started");
         require(!fundraiser.isCompleted, "Fundraise completed");
 
         IERC20 usdc = IERC20(usdcAddress);
+        require(usdcAmount > 0, "USDC amount must be greater than 0");
 
-        uint256 tokensToReceive = LinearBondingCurve.calculateTokens(
-            fundraiser.tokensSold, // 18 decimals
-            usdcAmount, // 6 decimals
-            TARGET_TOKENS_SOLD, // 18 decimals
-            fundraiser.basePrice, // 18 decimals
-            fundraiser.slope // 18 decimals
+        uint256 tokensToReceive = CustomBondingCurve.calculateTokensForUSDC(
+            usdcAmount, fundraiser.tokensSold, fundraiser.currentFunding, fundraiser.targetFunding
         );
-
-        console2.log("tokensToReceive", tokensToReceive);
         require(tokensToReceive > 0, "Amount too small");
 
-        require(fundraiser.tokensSold + tokensToReceive <= TARGET_TOKENS_SOLD, "Exceeds target tokens");
+        uint256 usdcToAccept = usdcAmount;
+        if (fundraiser.currentFunding + usdcAmount > fundraiser.targetFunding) {
+            usdcToAccept = fundraiser.targetFunding - fundraiser.currentFunding;
+            tokensToReceive = CustomBondingCurve.calculateTokensForFinalUSDC(
+                usdcToAccept,
+                TARGET_TOKENS_SOLD - fundraiser.tokensSold,
+                fundraiser.targetFunding
+            );
+        }
 
-        // Transfer USDC from buyer (6 decimals)
-        usdc.safeTransferFrom(msg.sender, address(this), usdcAmount);
+        if (fundraiser.tokensSold + tokensToReceive > TARGET_TOKENS_SOLD) {
+            tokensToReceive = TARGET_TOKENS_SOLD - fundraiser.tokensSold;
+            usdcToAccept = CustomBondingCurve.calculateUSDCForTokens(
+                tokensToReceive, fundraiser.tokensSold, fundraiser.currentFunding, fundraiser.targetFunding
+            );
+        }
 
-        // Update state
-        fundraiser.currentFunding += usdcAmount; // 6 decimals
-        fundraiser.tokensSold += tokensToReceive; // 18 decimals
-        userPurchases[fundraiserId][msg.sender] += tokensToReceive; // 18 decimals
+        if (
+            fundraiser.currentFunding + usdcToAccept >= fundraiser.targetFunding
+                || fundraiser.tokensSold + tokensToReceive >= TARGET_TOKENS_SOLD
+        ) {
+            usdcToAccept = fundraiser.targetFunding - fundraiser.currentFunding;
+            tokensToReceive = TARGET_TOKENS_SOLD - fundraiser.tokensSold;
+        }
 
-        emit TokensPurchased(fundraiserId, msg.sender, tokensToReceive, usdcAmount);
+        require(fundraiser.currentFunding + usdcToAccept <= fundraiser.targetFunding, "Exceeds USDC target");
+        require(fundraiser.tokensSold + tokensToReceive <= TARGET_TOKENS_SOLD, "Exceeds token target");
 
-        // Check if funding target is reached
-        if (fundraiser.currentFunding >= fundraiser.targetFunding || fundraiser.tokensSold >= TARGET_TOKENS_SOLD) {
+        usdc.safeTransferFrom(msg.sender, address(this), usdcToAccept);
+        fundraiser.currentFunding += usdcToAccept;
+        fundraiser.tokensSold += tokensToReceive;
+        console2.log("tokensToReceive", tokensToReceive);
+        userPurchases[fundraiserId][msg.sender] += tokensToReceive;
+
+        emit TokensPurchased(fundraiserId, msg.sender, tokensToReceive, usdcToAccept);
+
+        if (fundraiser.currentFunding == fundraiser.targetFunding || fundraiser.tokensSold == TARGET_TOKENS_SOLD) {
+            require(
+                fundraiser.currentFunding == fundraiser.targetFunding && fundraiser.tokensSold == TARGET_TOKENS_SOLD,
+                "Targets not met exactly"
+            );
             completeFundraise(fundraiserId);
         }
     }
-
     /**
      * @notice Allows users to claim their purchased tokens after fundraising completion
      * @param fundraiserId ID of the fundraising campaign
      */
+
     function claimTokens(uint256 fundraiserId) external nonReentrant {
         require(!activeFundraisers[fundraiserId], "Fundraise still active");
         Fundraise storage fundraiser = fundraisers[fundraiserId];
@@ -216,6 +232,11 @@ contract Launchpad is
     // =============================================
     // ============== VIEW FUNCTIONS ===============
     // =============================================
+
+    function getCurrentPrice(uint256 fundraiserId) external view returns (uint256) {
+        Fundraise storage fundraiser = fundraisers[fundraiserId];
+        return CustomBondingCurve.getCurrentPrice(fundraiser.tokensSold, fundraiser.currentFunding, fundraiser.targetFunding);
+    }
 
     /**
      * @notice Returns detailed information about a fundraising campaign
@@ -299,7 +320,7 @@ contract Launchpad is
 
         // Create Uniswap pool
         token.approve(uniswapRouter, LIQUIDITY_TOKENS); // 18 decimals
-        usdc.safeTransfer(uniswapRouter, liquidityUsdcAmount); // 6 decimals
+        usdc.approve(uniswapRouter, liquidityUsdcAmount); // 6 decimals
 
         IUniswapV2Router02 router = IUniswapV2Router02(uniswapRouter);
         router.addLiquidity(
