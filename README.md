@@ -115,12 +115,10 @@ The Linear curve aligns perfectly with our practical needs of raising funds, sel
 ### Deployment
 
 #### Sepolia Testnet
-```
 Contract Addresses:
 Launchpad Proxy: [0x2ed0aa33fcd1a3b5b2abfa317582664686ce7cf4](https://sepolia.etherscan.io/address/0x2ed0aa33fcd1a3b5b2abfa317582664686ce7cf4)
 Launchpad Implementation: [0xfabc58345ff9cacc43a3716a12520e32aa2853c8](https://sepolia.etherscan.io/address/0xfabc58345ff9cacc43a3716a12520e32aa2853c8)
 Mock USDC (6 Decimals): [0xc896d15d0100fecdbff8c84ecfe62c5976040f3e](https://sepolia.etherscan.io/address/0xc896d15d0100fecdbff8c84ecfe62c5976040f3e)
-```
 
 ### Development
 
