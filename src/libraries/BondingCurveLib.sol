@@ -56,23 +56,6 @@ library BondingCurveLib {
         return (tokensToMint, usdcNeeded);
     }
 
-    /// @notice Calculates USDC required to mint given token amount
-    function calculateUsdcRequired(
-        uint256 tokenAmount,
-        uint256 currentSupply,
-        uint256 slope
-    )
-        public
-        pure
-        returns (uint256)
-    {
-        uint256 newSupply = currentSupply + tokenAmount;
-        uint256 supplyDelta = (newSupply * newSupply - currentSupply * currentSupply) / SCALE;
-
-        uint256 cost = (slope * supplyDelta) / (2 * SCALE);
-        return cost / 1e12; // Convert to USDC (6 decimals)
-    }
-
     /// @dev Babylonian method
     function sqrt(uint256 x) internal pure returns (uint256) {
         if (x == 0) return 0;

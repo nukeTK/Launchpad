@@ -37,17 +37,99 @@ While Step functions are viable, they have some drawbacks:
 - May discourage trading between price steps
 - Less natural price discovery
 
-#### Why Linear?
-The Linear bonding curve is the perfect fit for our use case because:
-- **Inherent Stability**: No zero-price problems or formula modifications needed
-- **Simple Implementation**: Straightforward to implement and understand
-- **Fair Price Discovery**: Provides moderate rewards for early buyers (1.67x)
-- **Predictable Progression**: Price changes are consistent and transparent
-- **Balanced Incentives**: Rewards early participants while maintaining reasonable price progression
-- **Smooth Trading**: Ensures continuous price movement without sudden jumps
-- **Market Efficiency**: Facilitates natural price discovery and trading
+### Why We Chose This Linear Bonding Curve Formula
 
-The Linear curve aligns perfectly with our practical needs of raising funds, selling tokens, and rewarding early buyers without added complexity or potential issues.
+The bonding curve logic is implemented in `BondingCurveLib.sol`, which uses a mathematically derived formula to calculate token pricing over time based on supply. Here's how and why this approach was chosen:
+
+#### Problem to Solve
+We needed a bonding curve that:
+- Increases token price smoothly with every token minted
+- Maintains precision between USDC (6 decimals) and tokens (18 decimals)
+- Avoids zero-price edge cases and manipulation
+- Supports predictable and fair pricing for buyers
+- Requires no initial liquidity seeding or complicated bootstrapping
+
+#### Mathematical Foundation
+The linear bonding curve follows the formula:
+```solidity
+Price = slope × supply
+```
+
+To determine the total cost of purchasing tokens or how many tokens can be purchased with a given amount of USDC, we integrate the price function:
+```solidity
+Total Cost = (slope / 2) × (newSupply² - currentSupply²)
+```
+
+This enables:
+- Efficient pricing calculation without loops
+- Accurate output for both "buy X tokens" or "spend Y USDC" flows
+- A consistent and predictable pricing model
+
+#### Visual Representation
+
+![Linear Bonding Curve: Price Increases with Supply](assets/linear_bonding_curve.png)
+
+Here's the graph for the linear bonding curve, where the token price increases linearly with the supply.
+
+#### Mathematical Derivation
+
+We use a linear bonding curve defined by the formula:
+```
+price = slope * currentSupply
+```
+
+Where:
+- `price` is the current token price in USDC (6 decimals)
+- `slope = (2 * target_raise * 1e6) / (maxSupply^2)`
+- `target_raise` is the total USDC we aim to raise (e.g., 1,000,000 USDC)
+- `maxSupply` is the maximum number of tokens to be sold (e.g., 1,000,000 tokens)
+
+We derive this formula to ensure that when all tokens (up to maxSupply) are sold, the total USDC raised exactly equals target_raise. This is achieved by integrating the price curve:
+
+```
+totalUSDC = ∫ from 0 to maxSupply of (slope * x) dx
+         = (slope * maxSupply^2) / 2
+```
+
+Solving for slope gives:
+```
+slope = (2 * target_raise) / maxSupply^2
+```
+
+This mathematical design ensures:
+- Early buyers get a cheaper price
+- Later buyers pay a higher price as supply increases
+- Predictable, capped fundraising that encourages early participation
+- Fair and transparent price discovery mechanism
+- No price manipulation opportunities
+- Efficient gas usage through simple arithmetic operations
+
+#### Implementation Details
+The `BondingCurveLib` implements:
+1. `calculateSlope`: Computes the linear slope based on max token supply and USDC target
+2. `calculatePrice`: Returns the token price at a given supply
+3. `calculateTokensToMint`: Computes tokens mintable for given USDC input
+4. `sqrt`: Babylonian square root method used in curve inversion
+
+All functions are carefully scaled between 6 and 18 decimals to match token and stablecoin standards and avoid precision loss.
+
+#### Integration with Launchpad
+The Launchpad is designed around this bonding curve model to:
+- Allow creators to define a target USDC raise and max supply
+- Dynamically compute token price as the sale progresses
+- Guarantee fair treatment for all buyers (early and late)
+- Prevent manipulation via slippage or gas bribes
+- Optimize for gas and upgradeability via modular architecture
+
+#### Key Advantages
+- Smooth and fair token issuance
+- Efficient use of math (no looping or iterative approximation)
+- Constant-time computation
+- Scaled precision (1e18) for Ethereum's fixed-point arithmetic
+- No need for initial capital
+- Simple implementation
+- Transparent price calculation
+- Safe from manipulation
 
 ### Token Distribution
 
