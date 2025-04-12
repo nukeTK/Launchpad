@@ -67,7 +67,8 @@ This enables:
 
 #### Visual Representation
 
-![Linear Bonding Curve: Price Increases with Supply](assets/linear_bonding_curve.png)
+![Linear Bonding Curve: Price Increases with Supply](https://github.com/user-attachments/assets/0302d831-d298-4d6d-be43-74f172adb15a)
+
 
 Here's the graph for the linear bonding curve, where the token price increases linearly with the supply.
 
