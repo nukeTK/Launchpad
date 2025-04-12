@@ -191,9 +191,6 @@ The Launchpad is designed around this bonding curve model to:
 
 - Solidity version: ^0.8.20
 - Decimal precision: 18 decimals
-- Base price: 75% of average price
-- Final price: 125% of average price
-- Price slope: (finalPrice - basePrice) / targetTokens
 
 ### Deployment
 
