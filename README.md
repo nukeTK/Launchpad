@@ -65,14 +65,6 @@ This enables:
 - Accurate output for both "buy X tokens" or "spend Y USDC" flows
 - A consistent and predictable pricing model
 
-#### Visual Representation
-
-![Linear Bonding Curve: Price Increases with Supply](https://github.com/user-attachments/assets/50edc8fd-3d4d-4cdf-8579-e2cb1c935aa2)
-
-
-
-Here's the graph for the linear bonding curve, where the token price increases linearly with the supply.
-
 #### Mathematical Derivation
 
 We use a linear bonding curve defined by the formula:
