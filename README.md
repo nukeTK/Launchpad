@@ -1,6 +1,6 @@
 ##Launchpad
 
-RagaFinance Launchpad is a decentralized platform built on Ethereum that enables projects to raise funds through token sales using a Bancor bonding curve mechanism. The platform provides a secure and efficient way for projects to launch their tokens while ensuring fair price discovery and protecting both creators and investors.
+Launchpad is a decentralized platform built on Ethereum that enables projects to raise funds through token sales using a Bancor bonding curve mechanism. The platform provides a secure and efficient way for projects to launch their tokens while ensuring fair price discovery and protecting both creators and investors.
 
 ### Key Features
 
